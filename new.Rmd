@@ -5,26 +5,49 @@ date: "September 29, 2016"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Motivation
+Every day, nearly 100 people die from vehicle-related accidents.
+
+Today, the U.S. Department of Transportation is releasing an open data set that contains detailed, anonymized information about each of these tragic incidents. As the new data being released show, and as DOT reported earlier this summer, 2015 showed a marked increase in traffic fatalities nationwide. 
+
+## Key Questions
+1.How might road type effect the risk of fatal crashes?
+
+2.How might climate change increase the risk of fatal crashes in a community? (supplemental)
+
+## Methods
+1. Collect data related with road condition.(done)
+
+2. Use linear model or other to see the relationship
+
+3. Derive a prediction model to mark Baltimore and its connected counties.
+
+## Data collection
+```{r}
+folder<-"/Users/wendylin/Documents/AD/Project/"
+main.data<-read.csv(paste0(folder,"accident.csv"))
+sup.data<-read.csv(paste0(folder,"vehicle.csv"))
+sup.data.norepli<-sup.data[!duplicated(sup.data$ST_CASE),]
+useful.data<-cbind(main.data$STATE,main.data$ST_CASE,main.data$RUR_URB,
+                   main.data$FUNC_SYS,main.data$TYP_INT,main.data$REL_ROAD,
+                   sup.data.norepli$VTRAFWAY,sup.data.norepli$VNUM_LAN,
+                   main.data$FATALS,main.data$CITY,main.data$COUNTY)
+colnames(useful.data)<-c("STATE","ST_CASE","RUR_URB","FUNC_SYS","TYP_INT",
+                         "REL_ROAD","VTRAFWAY","VNUM_LAN","FATALS","CITY","COUNTY")
+save(useful.data,file=paste0(folder,"useful.RData"))
+road.data<-read.csv(paste0(folder,
+                           "Maryland_Road_Centerlines__Local_and_Other_Roads.csv"))
+bal.road.data<-road.data[which(road.data$COUNTY==21),]
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+##Focus
+1. prediction
+2. association
+3. several (2/3) hypothesis
+4. key variable
+5. maps
+6. prepare data, identify some methods
 
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+1.use rate in every state
