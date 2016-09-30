@@ -24,20 +24,32 @@ Today, the U.S. Department of Transportation is releasing an open data set that 
 
 ## Data collection
 ```{r}
+library(dplyr)
 folder<-"/Users/wendylin/Documents/AD/Project/"
-main.data<-read.csv(paste0(folder,"accident.csv"))
-sup.data<-read.csv(paste0(folder,"vehicle.csv"))
-sup.data.norepli<-sup.data[!duplicated(sup.data$ST_CASE),]
-useful.data<-cbind(main.data$STATE,main.data$ST_CASE,main.data$RUR_URB,
-                   main.data$FUNC_SYS,main.data$TYP_INT,main.data$REL_ROAD,
-                   sup.data.norepli$VTRAFWAY,sup.data.norepli$VNUM_LAN,
-                   main.data$FATALS,main.data$CITY,main.data$COUNTY)
-colnames(useful.data)<-c("STATE","ST_CASE","RUR_URB","FUNC_SYS","TYP_INT",
-                         "REL_ROAD","VTRAFWAY","VNUM_LAN","FATALS","CITY","COUNTY")
-save(useful.data,file=paste0(folder,"useful.RData"))
+#main.data<-read.csv(paste0(folder,"accident.csv"))
+#sup.data<-read.csv(paste0(folder,"vehicle.csv"))
+#sup.data.norepli<-sup.data[!duplicated(sup.data$ST_CASE),]
+#useful.data<-cbind(main.data$STATE,main.data$ST_CASE,main.data$RUR_URB,
+#                   main.data$FUNC_SYS,main.data$TYP_INT,main.data$REL_ROAD,
+#                   sup.data.norepli$VTRAFWAY,sup.data.norepli$VNUM_LAN,
+#                   main.data$FATALS,main.data$CITY,main.data$COUNTY)
+#colnames(useful.data)<-c("STATE","ST_CASE","RUR_URB","FUNC_SYS","TYP_INT",
+#                      "REL_ROAD","VTRAFWAY","VNUM_LAN","FATALS","CITY","COUNTY")
+#save(useful.data,file=paste0(folder,"useful.RData"))
+load(paste0(folder,"/useful.RData"))
 road.data<-read.csv(paste0(folder,
-                           "Maryland_Road_Centerlines__Local_and_Other_Roads.csv"))
+                        "Maryland_Road_Centerlines__Local_and_Other_Roads.csv"))
 bal.road.data<-road.data[which(road.data$COUNTY==21),]
+```
+
+
+##Data transformation
+```{r}
+useful.data<-as.data.frame(useful.data)
+data.ru.int<-useful.data %>% group_by(STATE,RUR_URB,TYP_INT)%>%
+  summarise(length(ST_CASE))
+data.ru.int
+
 ```
 
 
