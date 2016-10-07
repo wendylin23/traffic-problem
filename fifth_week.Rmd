@@ -1,7 +1,7 @@
 ---
 title: "Traffic_Fatality"
 author: "Wenyi Lin"
-date: "September 29, 2016"
+date: "Oct 6, 2016"
 output: html_document
 ---
 
@@ -65,3 +65,13 @@ data.ru.int
 1.use rate in every state
 
 1. traffic light 
+
+##Analysis steps
+1. Calculate fatality rate for each county in Maryland based on traffic density.  
+
+2. Use linear regression/ other GLM regression model to analyze the relationship between traffic fatality and road type(e.g. rural/urban area, type of conjuction).
+
+3. Traning data: 2006-2014.  
+   Test data:2015.
+   
+4. Plot on map (GIS package in R) to show specify higher fatality risk area. 
