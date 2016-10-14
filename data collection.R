@@ -1,6 +1,8 @@
 library(foreign)
 library(readxl)
 library(dplyr)
+library(stringr)
+
 folder.name<-"/Users/wendylin/Documents/AD/data/FARS2013NationalDBF/"
 file.name<-"accident.dbf"
 accident.2013<-read.dbf(paste0(folder.name,file.name),as.is = FALSE)
@@ -20,5 +22,18 @@ county.data<-read_excel(paste0(folder,county.file),sheet = 1,skip=1)
 md.county<-county.data[county.data$`State Abbreviation`=="MD",]
 
 gis$COUNTY_DES <- toupper(as.character(gis$COUNTY_DES))
-md.county.uniform<-md.county[as.numeric(md.county$`County Code`) %in% unique(maryland.fatality$COUNTY),]
-md.county.name<-md.county.uniform[md.county.uniform$`City Name/County Name` %in% as.character(unique(gis$COUNTY_DES)),]
+md.county.uniform<-md.county[as.numeric(md.county$`County Code`) %in% 
+                               unique(maryland.fatality$COUNTY),]
+md.county.uniform$`City Name/County Name`<-gsub("[[:punct:]]", "", 
+                                                md.county.uniform$`City Name/County Name`)
+md.county.name<-md.county.uniform[md.county.uniform$`City Name/County Name` %in% 
+                                    as.character(unique(gis$COUNTY_DES)),]
+combine.md.county.name<-md.county.name[is.na(md.county.name$`City Code`),]
+
+for(i in 1:nrow(gis))
+{
+  gis$new_county_id[i]<-combine.md.county.name[gis[i,]$COUNTY_DES==
+                                          combine.md.county.name$`City Name/County Name`,]$`County Code`
+}
+gis$new_county_id<-as.numeric(gis$new_county_id)
+

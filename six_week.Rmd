@@ -1,0 +1,24 @@
+---
+title: "Basic Results"
+author: "Wenyi Lin"
+date: "October 13, 2016"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+folder<-"/Users/wendylin/Documents/AD/data/FARS2015NationalCSV/"
+main.data<-read.csv(paste0(folder,"accident.csv"))
+sup.data<-read.csv(paste0(folder,"vehicle.csv"))
+sup.data.norepli<-sup.data[!duplicated(sup.data$ST_CASE),]
+useful.data<-cbind(main.data$STATE,main.data$ST_CASE,main.data$RUR_URB,
+                  main.data$FUNC_SYS,main.data$TYP_INT,main.data$REL_ROAD,
+                  sup.data.norepli$VTRAFWAY,sup.data.norepli$VNUM_LAN,
+                  main.data$FATALS,main.data$CITY,main.data$COUNTY,
+                  main.data$LATITUDE,main.data$LONGITUD,main.data$HOUR)
+colnames(useful.data)<-c("STATE","ST_CASE","RUR_URB","FUNC_SYS","TYP_INT",
+                     "REL_ROAD","VTRAFWAY","VNUM_LAN","FATALS","CITY","COUNTY",
+                     "LATITUDE","LONGITUD","HOUR")
+#save(useful.data,file=paste0(folder,"useful.RData"))
+```
+
