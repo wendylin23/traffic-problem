@@ -37,3 +37,16 @@ for(i in 1:nrow(gis))
 }
 gis$new_county_id<-as.numeric(gis$new_county_id)
 
+#collect 2006-2014 data
+folder.name<-"/Users/wendylin/Documents/AD/data/"
+add.name<-"FARS"
+year<-seq(2006,2014,by=1)
+pos.file.name<-"[Aa][Cc][Cc][Ii][Dd][Ee][Nn][Tt][:punct:][Dd][Bb][Ff]"
+accident_fatal<-list()
+for(i in 1:length(year))
+{
+  files<-list.files(paste0(folder.name,add.name,year[i]))
+  file.name<-files[str_detect(files,pos.file.name)]
+  accident_fatal[[i]]<-read.dbf(paste0(folder.name,add.name,year[i],"/",file.name),as.is = FALSE)
+}
+maryland.fatal<-sapply(accident_fatal,)

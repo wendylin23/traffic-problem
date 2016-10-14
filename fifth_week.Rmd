@@ -38,7 +38,7 @@ folder<-"/Users/wendylin/Documents/AD/Project/"
 #save(useful.data,file=paste0(folder,"useful.RData"))
 load(paste0(folder,"/useful.RData"))
 road.data<-read.csv(paste0(folder,
-                        "Maryland_Road_Centerlines__Local_and_Other_Roads.csv"))
+                      "Maryland_Road_Centerlines__Local_and_Other_Roads.csv"))
 bal.road.data<-road.data[which(road.data$COUNTY==21),]
 ```
 
