@@ -4,9 +4,17 @@ author: "Wenyi Lin"
 date: "October 13, 2016"
 output: html_document
 ---
+## Motivation
+Every day, nearly 100 people die from vehicle-related accidents.
 
-```{r}
+Today, the U.S. Department of Transportation is releasing an open data set that contains detailed, anonymized information about each of these tragic incidents. As the new data being released show, and as DOT reported earlier this summer, 2015 showed a marked increase in traffic fatalities nationwide. 
+
+The main question here is, it is necessary to assess whether a particular highway section or junction is unusually hazardous: whether more accidents occur than expected given the nature of the site and level of exposure. In order to analyze the fatality rate in Maryland related with land use situation and functional system.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 library(dplyr)
+library(ggplot2)
+library(ggmap)
 folder<-"/Users/wendylin/Documents/AD/data/FARS2015NationalCSV/"
 main.data<-read.csv(paste0(folder,"accident.csv"))
 sup.data<-read.csv(paste0(folder,"vehicle.csv"))

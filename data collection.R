@@ -49,4 +49,3 @@ for(i in 1:length(year))
   file.name<-files[str_detect(files,pos.file.name)]
   accident_fatal[[i]]<-read.dbf(paste0(folder.name,add.name,year[i],"/",file.name),as.is = FALSE)
 }
-maryland.fatal<-sapply(accident_fatal,)
