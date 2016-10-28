@@ -1,0 +1,329 @@
+---
+title: "Read and Clean data"
+author: "Wenyi Lin"
+date: "October 28, 2016"
+output: pdf_document
+---
+
+## Read and Clean Nationwide Data
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(foreign)
+library(readxl)
+library(dplyr)
+library(stringr)
+library(Hmisc)
+#pos.file.name<-"[Aa][Cc][Cc][Ii][Dd][Ee][Nn][Tt][:punct:][Dd][Bb][Ff]"
+
+#working dir
+folder<-"/Users/wendylin/Documents/AD/traffic_fatality/data/" 
+
+#load data
+state.number=24
+data.folder<-"FARS2010/"
+data.2010<-read.dbf(paste0(folder,data.folder,"accident.dbf"))
+data.2010$ST_CASE<-paste0("2010",data.2010$ST_CASE)
+state.data.2010<-data.2010[data.2010$STATE%in%state.number,]
+#state.data.2010$ST_CASE<-paste0("2010",state.data.2010$ST_CASE)
+person.2010<-read.dbf(paste0(folder,data.folder,"person.dbf"))
+person.2010$ST_CASE<-paste0("2010",person.2010$ST_CASE)
+state.person.2010<-person.2010[person.2010$STATE%in%state.number,]
+#state.person.2010$ST_CASE<-paste0("2010",state.person.2010$ST_CASE)
+
+data.folder<-"FARS2011/"
+data.2011<-read.dbf(paste0(folder,data.folder,"accident.dbf"))
+data.2011$ST_CASE<-paste0("2011",data.2011$ST_CASE)
+state.data.2011<-data.2011[data.2011$STATE%in%state.number,]
+#state.data.2011$ST_CASE<-paste0("2011",state.data.2011$ST_CASE)
+person.2011<-read.dbf(paste0(folder,data.folder,"person.dbf"))
+person.2011$ST_CASE<-paste0("2011",person.2011$ST_CASE)
+state.person.2011<-person.2011[person.2011$STATE%in%state.number,]
+#state.person.2011$ST_CASE<-paste0("2011",state.person.2011$ST_CASE)
+
+data.folder<-"FARS2012/"
+data.2012<-read.dbf(paste0(folder,data.folder,"accident.dbf"))
+data.2012$ST_CASE<-paste0("2012",data.2012$ST_CASE)
+state.data.2012<-data.2012[data.2012$STATE%in%state.number,]
+#state.data.2012$ST_CASE<-paste0("2012",state.data.2012$ST_CASE)
+person.2012<-read.dbf(paste0(folder,data.folder,"person.dbf"))
+person.2012$ST_CASE<-paste0("2012",person.2012$ST_CASE)
+state.person.2012<-person.2012[person.2012$STATE%in%state.number,]
+#state.person.2012$ST_CASE<-paste0("2012",state.person.2012$ST_CASE)
+
+data.folder<-"FARS2013/"
+data.2013<-read.dbf(paste0(folder,data.folder,"accident.dbf"))
+data.2013$ST_CASE<-paste0("2013",data.2013$ST_CASE)
+state.data.2013<-data.2013[data.2013$STATE%in%state.number,]
+#state.data.2013$ST_CASE<-paste0("2013",state.data.2013$ST_CASE)
+person.2013<-read.dbf(paste0(folder,data.folder,"person.dbf"))
+person.2013$ST_CASE<-paste0("2013",person.2013$ST_CASE)
+state.person.2013<-person.2013[person.2013$STATE%in%state.number,]
+#state.person.2013$ST_CASE<-paste0("2013",state.person.2013$ST_CASE)
+
+data.folder<-"FARS2014/"
+data.2014<-read.dbf(paste0(folder,data.folder,"accident.dbf"))
+data.2014$ST_CASE<-paste0("2014",data.2014$ST_CASE)
+state.data.2014<-data.2014[data.2014$STATE%in%state.number,]
+#state.data.2014$ST_CASE<-paste0("2014",state.data.2014$ST_CASE)
+person.2014<-read.dbf(paste0(folder,data.folder,"person.dbf"))
+person.2014$ST_CASE<-paste0("2014",person.2014$ST_CASE)
+state.person.2014<-person.2014[person.2014$STATE%in%state.number,]
+#state.person.2014$ST_CASE<-paste0("2014",state.person.2014$ST_CASE)
+
+data.folder<-"FARS2015/"
+data.2015<-read.csv(paste0(folder,data.folder,"accident.csv"))
+data.2015$ST_CASE<-paste0("2015",data.2015$ST_CASE)
+state.data.2015<-data.2015[data.2015$STATE%in%state.number,]
+#state.data.2015$ST_CASE<-paste0("2015",state.data.2015$ST_CASE)
+person.2015<-read.csv(paste0(folder,data.folder,"person.csv"))
+person.2015$ST_CASE<-paste0("2015",person.2015$ST_CASE)
+state.person.2015<-person.2015[person.2015$STATE%in%state.number,]
+
+#maryland.person.2015$ST_CASE<-paste0("2015",maryland.person.2015$ST_CASE)
+
+#only use maryland data
+# accident.data.combine<-list(accident.2010=maryland.data.2010,
+#                    accident.2011=maryland.data.2011,
+#                    accident.2012=maryland.data.2012,
+#                    accident.2013=maryland.data.2013,
+#                    accident.2014=maryland.data.2014,
+#                    accident.2015=maryland.data.2015)
+
+#combine nationwide data
+accident.data.combine<-list(accident.2010=data.2010,
+                            accident.2011=data.2011,
+                            accident.2012=data.2012,
+                            accident.2013=data.2013,
+                            accident.2014=data.2014,
+                            accident.2015=data.2015)
+
+for(i in 1:5)
+{
+  urb_rur<-cut2(accident.data.combine[[i]]$ROAD_FNC,cuts = c(10,20))
+  accident.data.combine[[i]]$RUR_URB<-factor(urb_rur,
+                                             levels = levels(urb_rur),
+                                             labels = c(1,0,NA))
+}
+
+accident.useful.data<-accident.data.combine[[1]][,c("ST_CASE","DAY","MONTH","YEAR","DAY_WEEK",
+                                  "HOUR","MINUTE","NOT_HOUR","NOT_MIN",
+                                  "RELJCT1","RELJCT2",
+                                  "ARR_HOUR","ARR_MIN",
+                                  "HOSP_HR","HOSP_MN",
+                                  "DRUNK_DR","RUR_URB","WEATHER")]
+for(i in 2:6)
+{
+  temp<-accident.data.combine[[i]][,c("ST_CASE","DAY","MONTH","YEAR","DAY_WEEK",
+                          "HOUR","MINUTE","NOT_HOUR","NOT_MIN",
+                          "RELJCT1","RELJCT2",
+                          "ARR_HOUR","ARR_MIN",
+                          "HOSP_HR","HOSP_MN",
+                          "DRUNK_DR","RUR_URB","WEATHER")]
+  accident.useful.data<-rbind(accident.useful.data,temp)
+}
+accident.useful.data$date<-as.Date(paste0(accident.useful.data$YEAR,"/",accident.useful.data$MONTH,"/",accident.useful.data$DAY))
+weather_cut<-cut2(accident.useful.data$WEATHER,cuts = c(2,13))
+accident.useful.data$weather_cut<-factor(weather_cut,
+                                         levels = levels(weather_cut),
+                                         labels = c(1,0,2))
+
+# person.data.combine<-list(  person.2010=maryland.person.2010,
+#                             person.2011=maryland.person.2011,
+#                             person.2012=maryland.person.2012,
+#                             person.2013=maryland.person.2013,
+#                             person.2014=maryland.person.2014,
+#                             person.2015=maryland.person.2015)
+
+person.data.combine<-list(  person.2010=person.2010,
+                            person.2011=person.2011,
+                            person.2012=person.2012,
+                            person.2013=person.2013,
+                            person.2014=person.2014,
+                            person.2015=person.2015)
+
+person.useful.data<-person.data.combine[[1]][,c("ST_CASE","AGE","SEX","PER_TYP","DOA",
+                                                    "INJ_SEV","DEATH_HR","LAG_HRS","LAG_MINS",
+                                                "SEAT_POS","REST_USE")]
+for(i in 2:6)
+{
+  temp<-person.data.combine[[i]][,c("ST_CASE","AGE","SEX","PER_TYP","DOA",
+                                    "INJ_SEV","DEATH_HR","LAG_HRS","LAG_MINS",
+                                    "SEAT_POS","REST_USE")]
+  person.useful.data<-rbind(person.useful.data,temp)
+}
+person.useful.data$death<-ifelse(person.useful.data$DEATH_HR==88,0,1)
+
+#clean data
+data.join.nation<-right_join(accident.useful.data,person.useful.data,by = "ST_CASE")
+data.join.nation$AGE<-ifelse(data.join.nation$AGE==999,NA,data.join.nation$AGE)
+age_unavailable<-data.join.nation[is.na(data.join.nation$AGE),]$ST_CASE
+data.join.nation<-data.join.nation[!(data.join.nation$ST_CASE %in%age_unavailable),]
+
+data.join.nation$death<-ifelse(data.join.nation$DEATH_HR==88,0,1)
+#data.join.nation$death<-ifelse(data.join.nation$death==0 & data.join.nation$FATALS==1,1,data.join.nation$death)
+
+data.join.nation$newARR_HOUR<-ifelse(data.join.nation$NOT_HOUR==23&data.join.nation$ARR_HOUR==0,
+                                    24,data.join.nation$ARR_HOUR)
+data.join.nation$arrive<-data.join.nation$newARR_HOUR*60+data.join.nation$ARR_MIN-
+  (data.join.nation$NOT_HOUR*60+data.join.nation$NOT_MIN)
+data.join.nation<-data.join.nation[data.join.nation$arrive>=0,]
+data.join.nation$lag<-data.join.nation$LAG_HRS*24+data.join.nation$LAG_MINS
+data.join.nation$lag<-ifelse(data.join.nation$LAG_HRS==999,0,data.join.nation$lag)
+#data.join.nation$date<-as.Date(paste0(data.join.nation$YEAR,"/",data.join.nation$MONTH,"/",data.join.nation$DAY))
+data.join.nation$weekday<-ifelse(data.join.nation$DAY_WEEK==6|data.join.nation$DAY_WEEK==7,0,1)
+data.join.nation$rushhour<-ifelse((data.join.nation$HOUR>=7&data.join.nation$HOUR<=10)|
+                            (data.join.nation$HOUR>=16&data.join.nation$HOUR<=19),1,0)
+data.join.nation$isdriver<-ifelse(data.join.nation$PER_TYP==1,1,0)
+data.join.nation$child_ind<-ifelse(data.join.nation$AGE<=8,1,0)
+
+final.data.join<-data.join.nation[data.join.nation$LAG_HRS!=999,]
+final.data.join$lag<-final.data.join$LAG_HRS*24+final.data.join$LAG_MINS
+final.data.join$date<-as.Date(paste0(final.data.join$YEAR,"/",final.data.join$MONTH,"/",final.data.join$DAY))
+final.data.join$weekday<-ifelse(final.data.join$DAY_WEEK==6|final.data.join$DAY_WEEK==7,0,1)
+final.data.join$rushhour<-ifelse((final.data.join$HOUR>=7&final.data.join$HOUR<=10)|
+                                   (final.data.join$HOUR>=16&final.data.join$HOUR<=19),1,0)
+final.data.join$isdriver<-ifelse(final.data.join$PER_TYP==1,1,0)
+
+arr.final.data<-final.data.join[final.data.join$ARR_HOUR!=99&final.data.join$ARR_HOUR!=88,]
+arr.final.data$newARR_HOUR<-ifelse(arr.final.data$NOT_HOUR==23&arr.final.data$ARR_HOUR==0,
+                                    24,arr.final.data$ARR_HOUR)
+arr.final.data$arrive<-arr.final.data$newARR_HOUR*60+arr.final.data$ARR_MIN-
+  (arr.final.data$NOT_HOUR*60+arr.final.data$NOT_MIN)
+arr.final.data<-arr.final.data[arr.final.data$arrive>=0,]
+arr.final.data$early_arrive<-ifelse(arr.final.data$arrive<=10,1,0)
+
+not.final.data<-final.data.join[final.data.join$NOT_HOUR!=99&final.data.join$NOT_HOUR!=88,]
+not.final.data$not_interval<-(not.final.data$NOT_HOUR*60+not.final.data$NOT_MIN)-
+  (not.final.data$HOUR*60+not.final.data$MINUTE)
+not.final.data<-not.final.data[not.final.data$not_interval>=0,]
+not.final.data$early_not<-ifelse(not.final.data$not_interval<=2,1,0)
+
+arr.not.data<-arr.final.data[arr.final.data$NOT_HOUR!=99&arr.final.data$NOT_HOUR!=88,]
+arr.not.data$not_interval<-(arr.not.data$NOT_HOUR*60+arr.not.data$NOT_MIN)-
+  (arr.not.data$HOUR*60+arr.not.data$MINUTE)
+arr.not.data<-arr.not.data[arr.not.data$not_interval>=0,]
+arr.not.data$early_not<-ifelse(arr.not.data$not_interval<=2,1,0)
+
+```
+
+##Read and Clean Maryland data
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+accident.data.combine<-list(accident.2010=state.data.2010,
+                   accident.2011=state.data.2011,
+                   accident.2012=state.data.2012,
+                   accident.2013=state.data.2013,
+                   accident.2014=state.data.2014,
+                   accident.2015=state.data.2015)
+
+#nation data
+# accident.data.combine<-list(accident.2010=data.2010,
+#                             accident.2011=data.2011,
+#                             accident.2012=data.2012,
+#                             accident.2013=data.2013,
+#                             accident.2014=data.2014,
+#                             accident.2015=data.2015)
+
+for(i in 1:5)
+{
+  urb_rur<-cut2(accident.data.combine[[i]]$ROAD_FNC,cuts = c(10,20))
+  accident.data.combine[[i]]$RUR_URB<-factor(urb_rur,
+                                             levels = levels(urb_rur),
+                                             labels = c(1:length(levels(urb_rur))))
+}
+# urb_rur<-cut2(accident.data.combine[[5]]$ROAD_FNC,cuts = c(10,20))
+# accident.data.combine[[5]]$RUR_URB<-factor(urb_rur,
+#                                            levels = levels(urb_rur),
+#                                            labels = c(1,0))
+# urb_rur<-cut2(accident.data.combine[[6]]$RUR_URB,cuts = c(1,2,3))
+# accident.data.combine[[6]]$RUR_URB<-factor(urb_rur,
+#                                              levels = levels(urb_rur),
+#                                              labels = c(1,0))
+
+accident.useful.data<-accident.data.combine[[1]][,c("ST_CASE","DAY","MONTH","YEAR","DAY_WEEK",
+                                                    "HOUR","MINUTE","NOT_HOUR","NOT_MIN",
+                                                    "RELJCT1","RELJCT2",
+                                                    "ARR_HOUR","ARR_MIN",
+                                                    "HOSP_HR","HOSP_MN",
+                                                    "DRUNK_DR","RUR_URB","WEATHER","STATE","FATALS")]
+for(i in 2:6)
+{
+  temp<-accident.data.combine[[i]][,c("ST_CASE","DAY","MONTH","YEAR","DAY_WEEK",
+                                      "HOUR","MINUTE","NOT_HOUR","NOT_MIN",
+                                      "RELJCT1","RELJCT2",
+                                      "ARR_HOUR","ARR_MIN",
+                                      "HOSP_HR","HOSP_MN",
+                                      "DRUNK_DR","RUR_URB","WEATHER","STATE","FATALS")]
+  accident.useful.data<-rbind(accident.useful.data,temp)
+}
+accident.useful.data$date<-as.Date(paste0(accident.useful.data$YEAR,"/",accident.useful.data$MONTH,"/",accident.useful.data$DAY))
+weather_cut<-cut2(accident.useful.data$WEATHER,cuts = c(2,13))
+accident.useful.data$weather_cut<-factor(weather_cut,
+                                         levels = levels(weather_cut),
+                                         labels = c(1,0,2))
+person.data.combine<-list(  person.2010=state.person.2010,
+                            person.2011=state.person.2011,
+                            person.2012=state.person.2012,
+                            person.2013=state.person.2013,
+                            person.2014=state.person.2014,
+                            person.2015=state.person.2015)
+
+# person.data.combine<-list(  person.2010=person.2010,
+#                             person.2011=person.2011,
+#                             person.2012=person.2012,
+#                             person.2013=person.2013,
+#                             person.2014=person.2014,
+#                             person.2015=person.2015)
+
+person.useful.data<-person.data.combine[[1]][,c("ST_CASE","AGE","SEX","PER_TYP","DOA",
+                                                "INJ_SEV","DEATH_HR","LAG_HRS","LAG_MINS",
+                                                "SEAT_POS","REST_USE")]
+for(i in 2:6)
+{
+  temp<-person.data.combine[[i]][,c("ST_CASE","AGE","SEX","PER_TYP","DOA",
+                                    "INJ_SEV","DEATH_HR","LAG_HRS","LAG_MINS",
+                                    "SEAT_POS","REST_USE")]
+  person.useful.data<-rbind(person.useful.data,temp)
+}
+person.useful.data$death<-ifelse(person.useful.data$DEATH_HR==88,0,1)
+
+#clean data
+data.join<-right_join(accident.useful.data,person.useful.data,by = "ST_CASE")
+data.join$AGE<-ifelse(data.join$AGE==999|data.join$AGE==998,NA,data.join$AGE)
+age_unavailable<-data.join[is.na(data.join$AGE),]$ST_CASE
+data.join<-data.join[!(data.join$ST_CASE %in%age_unavailable),]
+#data.join<-data.join[!(data.join$REST_USE%in%c(96,97,98,99)),]
+data.join$death<-ifelse(data.join$DEATH_HR==88,0,1)
+data.join$death<-ifelse(data.join$death==0 & data.join$FATALS==1,1,data.join$death)
+#data.join$date<-as.Date(paste0(data.join$YEAR,"/",data.join$MONTH,"/",data.join$DAY))
+data.join$weekday_ind<-ifelse(data.join$DAY_WEEK==6|data.join$DAY_WEEK==7,0,1)
+data.join$rushhour_ind<-ifelse((data.join$HOUR>=7&data.join$HOUR<=10)|
+                             (data.join$HOUR>=16&data.join$HOUR<=19),1,0)
+data.join$isdriver_ind<-ifelse(data.join$PER_TYP==1,1,0)
+car<-c(1,2)
+data.join$driver_passenger_ind<-ifelse(data.join$PER_TYP %in% car,1,0)
+data.join$passenger_ind<-ifelse(data.join$PER_TYP ==2,1,0)
+#indicator for month, higher in the middle months
+ind_month = data.join$MONTH
+c<-which(ind_month<=10 & ind_month>=5)
+ind_month[c] = 1
+ind_month[-c] = 0
+data.join$month_ind<-ind_month
+
+data.join[is.na(data.join$RUR_URB),]$RUR_URB<-3
+data.join<-data.join[data.join$RUR_URB!=3,]
+
+data.join<-data.join[data.join$SEX==1|data.join$SEX==2,]
+data.join$SEX<-ifelse(data.join$SEX==2,0,data.join$SEX)
+data.join$belt_use_ind<-ifelse(data.join$REST_USE%in%c(1,2,3),1,0)
+data.join$child_seat_ind<-ifelse(data.join$REST_USE%in%c(4,10,11),1,0)
+data.join$child_ind<-ifelse(data.join$AGE<=8,1,0)
+data.join$RUR_URB<-ifelse(data.join$RUR_URB==2,0,data.join$RUR_URB)
+seat_cuts<-cut2(data.join$SEAT_POS,cuts=c(20,50))
+data.join$seat_ind<-factor(seat_cuts,
+                           levels = levels(seat_cuts),
+                           labels = c(0,1,5))
+data.join<-data.join[data.join$seat_ind!=5,]
+data.join$drunk_ind<-ifelse(data.join$DRUNK_DR==0,0,1)
+#save(data.join,file="maryland_fatal_data.RData")
+
+```
+

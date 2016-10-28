@@ -1,0 +1,114 @@
+---
+title: "Supplemental"
+author: "Wenyi Lin"
+date: "October 24, 2016"
+output: pdf_document
+---
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(ggplot2)
+library(gridExtra)
+library(splines)
+library(dplyr)
+library(pROC)
+library(Hmisc)
+data.folder<-"/Users/wendylin/Documents/AD/traffic_fatality/data/"
+load(paste0(data.folder,"maryland_fatal_data.RData"))
+```
+
+##1. Fatal cases summary in Maryland
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+death.number<-data.join %>%group_by(date)%>%summarise(death_number<-sum(death))%>%
+  collect%>%.[[2]]
+date<-data.join %>%group_by(date)%>%summarise(death_number<-sum(death))%>%
+  collect%>%.[[1]]
+death.summary<-data.frame(date=date,death=death.number)
+ggplot(data = death.summary,
+       aes(x=date,y=death.number))+
+  geom_jitter(size = 0.1)+
+  stat_smooth(method = "loess", formula = y ~ x, size = 1,se=FALSE,span=0.2)+
+  ggtitle("Death vs. Date")
+```
+
+##2. Age Summary
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+age_summary<-as.data.frame(data.join %>%group_by(AGE)%>%
+                               summarise(death=sum(death)))
+ggplot(data = age_summary,
+       aes(x=AGE,y=death))+
+  geom_bar( position = "dodge",stat="identity")+
+  ggtitle("Death vs. Age")
+```
+
+##3. ROC curve and threshold
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+lr1=glm(death~SEX+ns(AGE,3)+isdriver_ind+belt_use_ind+
+          RUR_URB+rushhour_ind+weekday_ind+month_ind,
+        data=data.join[data.join$AGE>=16,],
+        family = binomial(link="logit"))
+
+lr2=glm(death~SEX+ns(AGE,3)+isdriver_ind*belt_use_ind+
+          RUR_URB+rushhour_ind*weekday_ind+month_ind+
+          isdriver_ind:drunk_ind,
+        data=data.join[data.join$AGE>=16,],
+        family = binomial(link="logit"))
+
+cv.data<-data.join[data.join$AGE>=16,]
+set.seed(20161012)
+id_rand=runif(nrow(cv.data))
+cv.data$cv_group=ntile(id_rand, 10)
+acc1=acc2=c()
+cv_results1=array(0,c(0,2))
+colnames(cv_results1)=c("Truth","Prob")
+cv_results2=cv_results1
+for(i in 1:10)
+{
+  test=cv.data[cv.data$cv_group==i,]
+  train=cv.data[cv.data$cv_group!=i,]
+  
+  lr1_train=glm(lr1$formula,data=train,family = binomial(link="logit"))
+  pre1=predict(lr1_train,newdata=test,type = "response")
+  cv_results1=rbind(cv_results1,data.frame(Truth=test$death,Prob=pre1))
+  results1=ifelse(pre1 > 0.5,1,0)
+  err=mean(test$death != results1)
+  acc1[i]=1-err
+  
+  lr2_train=glm(lr2$formula,data=train,family = binomial(link="logit"))
+  pre2=predict(lr2_train,newdata=test,type = "response")
+  cv_results2=rbind(cv_results2,data.frame(Truth=test$death,Prob=pre2))
+  results2=ifelse(pre2 > 0.5,1,0)
+  err=mean(test$death != results2)
+  acc2[i]=1-err
+}
+
+roc1_cv=roc(response=cv_results1$Truth, predictor=cv_results1$Prob)
+roc0_cv=roc(response=cv_results2$Truth, predictor=cv_results2$Prob)
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+rocs=list(roc1_cv, roc0_cv)
+aucs=round(sapply(rocs, auc), 3)
+models=c('Basic Model','Full Model')
+
+pal=c('black','blue')
+plot(roc1_cv, col=pal[1], type='l',main="Cross Validation ROC Curve")
+lines(roc0_cv, col=pal[2])
+legend('bottomright', legend=paste0(models, ' (AUC = ', aucs, ')'),
+       col=pal, lwd=2, lty=c(1,1), cex=0.5)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+plot(0,type="n",
+     xlim=range(c(roc1_cv$thresholds,roc0_cv$thresholds),finite=TRUE),
+     ylim=c(0,1),
+     ylab='Sensitivity/Specificity',xlab='Threshold',main="Sens/Spec v.s. Threshold for C.V. ROC")
+lines(roc1_cv$thresholds,roc1_cv$sensitivities,col=pal[1],lwd=2)
+lines(roc0_cv$thresholds,roc0_cv$sensitivities,col=pal[2],lwd=2)
+lines(roc1_cv$thresholds,roc1_cv$specificities,col=pal[1],lwd=2)
+lines(roc0_cv$thresholds,roc0_cv$specificities,col=pal[2],lwd=2)
+
+```
+

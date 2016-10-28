@@ -1,0 +1,263 @@
+---
+title: "What Causes Traffic Fatality and How Could We Survive"
+author: "Wenyi Lin"
+date: "October 23, 2016"
+output: pdf_document
+---
+
+## Introduction
+Every day, nearly 100 people die from vehicle-related accidents. From 2010 to 2015, there are 2912 people died in 2699 fatal traffic accidents in Maryland. Basically, traffic accidents are unavoidable, however, it is possible that we face the fact and protect ourselves. Thus, we would like to know what factors could have impact on a severe accident which might cause fatality. And also, if a possibaly fatal accident happens, do we have any chance to prolong our lives, and even, save our lives.
+
+Fatal risk could include personal chracters (age, sex, position), time factors (season, time of the day), driving behaviours (drunk, safety measurement) and environmental dectription (location). Each of these factors could be a potential threat to our safety and they could also work interactively. Here we fit a logistic model to figure out their causality and relationship.
+
+Once a serious traffic accident happens, the response and rescue from hospitals would be the last hope to save the live. Response time and arriving time at the scene would be the first concern to construct a survival model.
+
+## Data Description
+Data was compiled using the 2010-2015 Fatality Analysis Reporting System (FARS) data. We use Maryland fatality data extracted from the big data set to analyze risks in fatal traffic accidents within this state. Missing data related with age, death time was eliminated from analysis. Due to large volumn of missing data with medical service time records, thus, we applied survival analysis on nationwide dataset and used available medical sevice time variables.
+
+## Statistical Methods
+### 1. Logistic Model
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,fig.cap="Possible Risk" ,fig.align='center',out.width="0.9\\linewidth",fig.height=3,fig.width=9,fig.pos="!h",dev='tikz',sanitize=TRUE}
+library(ggplot2)
+library(gridExtra)
+library(splines)
+library(dplyr)
+library(pROC)
+library(Hmisc)
+#working dir
+data.folder<-"/Users/wendylin/Documents/AD/traffic_fatality/data/"
+load(paste0(data.folder,"maryland_fatal_data.RData"))
+cov.dataframe<-data.frame(death=data.join$death,
+                          date=data.join$date,
+                          age=data.join$AGE,
+                          weekday=data.join$weekday_ind,
+                          month=data.join$month_ind,
+                          rushhour=data.join$rushhour_ind,
+                          rural=data.join$RUR_URB,
+                          driver=data.join$isdriver_ind,
+                          belt.use=data.join$belt_use_ind,
+                          drunk=data.join$drunk_ind,
+                          passenger=data.join$passenger_ind)
+
+deathrate = function(death,x){
+  M = table(death,x)
+  rate = M[2,]/colSums(M)
+  return(rate)
+}
+
+p = ncol(cov.dataframe)-2
+names = colnames(cov.dataframe)
+Mat.as = c()
+Mat.ds = c()
+for(i in 4:p){
+  name = names[i]
+  rate = deathrate(cov.dataframe$death,as.numeric(as.character(cov.dataframe[,i])))
+  tmp = data.frame(c(0,1),rate,c(name,name))
+  if(i==8){Mat.ds = rbind(Mat.ds,tmp)}
+  if(rate[2]>rate[1] & i!=8){Mat.as = rbind(Mat.as,tmp)}else{Mat.ds = rbind(Mat.ds,tmp)}
+}
+colnames(Mat.as) = c("x","rate","name")
+colnames(Mat.ds) = c("x","rate","name")
+
+p.as = ggplot(data.frame(Mat.as),aes(x=x,y=rate,linetype=name)) + geom_line() + geom_point() + 
+scale_x_continuous(breaks=c(0,1)) + 
+  theme(plot.background=element_blank(),
+        panel.background=element_blank())+
+  xlab("Covariate Indicator") + 
+  ylab("Death Rate")
+
+p.ds = ggplot(data.frame(Mat.ds),aes(x=x,y=rate,linetype=name)) + geom_line() + geom_point() + scale_x_continuous(breaks=c(0,1)) + 
+  theme(plot.background=element_blank(),
+        panel.background=element_blank())+
+  xlab("Covariate Indicator") + 
+  ylab("Death Rate")
+
+grid.arrange(p.as,p.ds,ncol=2)
+
+```
+
+We made plots to show the effect of possible risk factors. Basically, death rate is higher when the accident is happened at rush hour (7-10 am, 4-7pm) on weekdays between May to October. Accidents happened at rural area are likely to have dead case compared with that at urban area. Drivers are relatively to be treatened by death among all accident-relevant types of people(passenger, pedestrian, Bicyclist, other) and in fact, almost 99.5% of fatal cases happened in the car. And apparently, using seat belt could decrease the death probability. Based on our findings, we would like to consider cases only include over-16-year individuals to confirm the possibility of being a driver.
+
+Logistic model is favorable when analyzing binary data. Based on our preliminary data analysis, we could construct a simple logistic model.
+
+\begin{align*}
+\text logit(P(Death=1)) &= \beta_0 + \beta_1 sex + \beta_2 age + \beta_3 weekday + \beta_4 month + \beta_5 rushhour + \beta_6 rural\\
+&+ \beta_7 is.driver +\beta_8 belt.use 
+\end{align*}
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+lr1=glm(death~SEX+ns(AGE,3)+isdriver_ind+belt_use_ind+
+          RUR_URB+rushhour_ind+weekday_ind+month_ind,
+        data=data.join[data.join$AGE>=16,],
+        family = binomial(link="logit"))
+
+lr2=glm(death~SEX+ns(AGE,3)+isdriver_ind*belt_use_ind+
+          RUR_URB+rushhour_ind*weekday_ind+month_ind+
+          isdriver_ind:drunk_ind,
+        data=data.join[data.join$AGE>=16,],
+        family = binomial(link="logit"))
+
+cv.data<-data.join[data.join$AGE>=16,]
+set.seed(20161012)
+id_rand=runif(nrow(cv.data))
+cv.data$cv_group=ntile(id_rand, 10)
+acc1=acc2=c()
+cv_results1=array(0,c(0,2))
+colnames(cv_results1)=c("Truth","Prob")
+cv_results2=cv_results1
+for(i in 1:10)
+{
+  test=cv.data[cv.data$cv_group==i,]
+  train=cv.data[cv.data$cv_group!=i,]
+  
+  lr1_train=glm(lr1$formula,data=train,family = binomial(link="logit"))
+  pre1=predict(lr1_train,newdata=test,type = "response")
+  cv_results1=rbind(cv_results1,data.frame(Truth=test$death,Prob=pre1))
+  results1=ifelse(pre1 > 0.5,1,0)
+  err=mean(test$death != results1)
+  acc1[i]=1-err
+  
+  lr2_train=glm(lr2$formula,data=train,family = binomial(link="logit"))
+  pre2=predict(lr2_train,newdata=test,type = "response")
+  cv_results2=rbind(cv_results2,data.frame(Truth=test$death,Prob=pre2))
+  results2=ifelse(pre2 > 0.5,1,0)
+  err=mean(test$death != results2)
+  acc2[i]=1-err
+}
+
+roc1_cv=roc(response=cv_results1$Truth, predictor=cv_results1$Prob)
+roc0_cv=roc(response=cv_results2$Truth, predictor=cv_results2$Prob)
+
+rocs=list(roc1_cv, roc0_cv)
+aucs=round(sapply(rocs, auc), 3)
+models=c('Basic Model','Full Model')
+
+pal=c('black','blue')
+plot(roc1_cv, col=pal[1], type='l')
+lines(roc0_cv, col=pal[2])
+legend('bottomright', legend=paste0(models, ' (AUC = ', aucs, ')'),
+       col=pal, lwd=2, lty=c(1,1), cex=0.5)
+
+#visualize sensitivity and specificity as functions of the probability threshold
+plot(0,type="n",
+     xlim=range(c(roc1_cv$thresholds,roc0_cv$thresholds),finite=TRUE),
+     ylim=c(0,1),
+     ylab='Sensitivity/Specificity',xlab='Threshold',main="Sens/Spec v.s. Threshold for C.V. ROC")
+lines(roc1_cv$thresholds,roc1_cv$sensitivities,col=pal[1],lwd=2)
+lines(roc0_cv$thresholds,roc0_cv$sensitivities,col=pal[2],lwd=2)
+lines(roc1_cv$thresholds,roc1_cv$specificities,col=pal[1],lwd=2)
+lines(roc0_cv$thresholds,roc0_cv$specificities,col=pal[2],lwd=2)
+```
+
+Natural spline was used on age factor in order to include possible trend and the degree of freedom is 3. By cross validation, we get the AUC for simple model is 0.635.
+
+Then we add more interactive items to the GLM model. The fatality rate in an accident would be higher is the driver is drunk. And apparently, seat belt use is highly related with driver's safety. According to these facts, our updated logistic model is given as:
+
+\begin{align*}
+\text logit(P(Death=1)) &= \beta_0 + \beta_1 sex + \beta_2 age + \beta_3 weekday + \beta_4 month + \beta_5 rushhour + \beta_6 rural\\
+&+ \beta_7 is.driver +\beta_8 belt.use +\beta_9 belt.use * is.driver\\
+&+ \beta_9 drunk *is.driver
+\end{align*}
+
+In this model, we get AUC=0.662 with cross vationdation. The table shows our estimation of model coefficients.
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+coef=round(coefficients(lr2),3)
+sd=round(sqrt(diag(vcov(lr2))),3)
+
+i<-"drunk_ind"
+j<-"isdriver_ind"
+inter = function(i,j){
+  x1 = as.numeric(as.character(data.join[,i]))
+  x2 = as.numeric(as.character(data.join[,j]))
+  y = data.join$death
+  mat = data.frame(x1,x2,y)
+  agg = aggregate(data=mat,y~x1+x2,mean)
+  return(agg)
+}
+mat.inter = inter(i,j)
+ggplot(data.frame(mat.inter),aes(x=x1,y=y,color=as.character(x2))) + geom_line() + geom_point() + 
+  scale_x_continuous(breaks=c(0,1)) +
+  theme(plot.background=element_blank(), panel.background=element_blank()) + 
+  ylab("death rate") + xlab(names[i]) + scale_color_discrete(name = names[j],labels=c('non-driver',"driver"))
+#ci=confint(lr2)
+```
+
+predictor| $\hat \beta$ | Std (with)|
+---------|---------|---------
+Is_driver|`r coef[6]`|`r sd[6]`
+Rural|`r coef[8]`|`r sd[8]`
+Rush Hour|`r coef[9]`|`r sd[9]`
+Weekday|`r coef[10]`|`r sd[10]`
+Mid-Month|`r coef[11]`|`r sd[11]`
+Is_driver: Belt Use|`r coef[12]`|`r sd[12]`
+Rush Hour:Weekday|`r coef[13]`|`r sd[13]`
+
+Thus, we conclude that compared with other person type involved in a fatal accident, the odds ratio of a driver's death is multiplied by `r round(exp(coef[6]),3)` (`r round(exp(coef[6]-1.96*sd[6]),3)`,`r round(exp(coef[6]+1.96*sd[6]),3)`). Odds ratio of death at rural area is `r round(exp(coef[8]),3)` (`r round(exp(coef[8]-1.96*sd[8]),3)`,`r round(exp(coef[8]+1.96*sd[8]),3)`) of that at urban area. During everyday's rush hour, odds ratio is increased by `r round(exp(coef[9]),3)-1` (`r round(exp(coef[9]-1.96*sd[9]),3)-1`,`r round(exp(coef[9]+1.96*sd[9]),3)-1`). From the mid-Spring to mid-Autumn, odds ratio of death is `r round(exp(coef[11]),3)` (`r round(exp(coef[11]-1.96*sd[11]),3)`,`r round(exp(coef[11]+1.96*sd[11]),3)`) of other seasons in a year. If a driver uses seat belt, the risk of death would be decreased by `r 1-round(exp(coef[12]),3)` (`r 1-round(exp(coef[12]-1.96*sd[12]),3)`,`r 1-round(exp(coef[12]+1.96*sd[12]),3)`).
+
+Actytually, the analysis is umcomplete to some extent. Fisrt of all, it is better to include all accident data over 5 years in Maryland to make inference about fatality rate. Secondly, more factors could be included in the model to improve the accuracy of the predictive model.
+
+### 2. Survival Analysis
+A fatal accident could always happen no matter how we try to avoid it. In this situation, it is critical porlong the survival time or even save lifes. It is believed that medical response time could affect survival time after traffic accidents. 
+
+Notificaiton time is the time we used to inform the emergency medical service after the accident happens. The time duration that emergency medical service arrived on the crash sceneEmergency medical service arrived on the crash scene is called arrival time. Both of them could be calculated based on FARS data.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,fig.align='center',out.width="0.5\\linewidth",fig.height=5,fig.width=9,fig.pos="!h",dev='tikz',sanitize=TRUE}
+library(survival)
+library(survminer)
+
+load(paste0(data.folder,"nation_survival_data.RData"))
+lagtime_cuts<-cut2(arr.not.data$lag,cuts = c(10,100))
+arr.not.data$lagtime_cuts<-factor(lagtime_cuts,
+                                         levels = levels(lagtime_cuts),
+                                         labels = c(1,2,3))
+death_lag<-table(arr.not.data$lagtime_cuts)
+fit <- survfit(Surv(lag) ~ 1, data = arr.not.data[arr.not.data$lag<400,], conf.type="log-log")
+p1<-ggsurvplot( fit,conf.int=TRUE,main = "Figure 2A Fatal Accident Survival Time",font.x = c(14, "bold"),font.tickslab =c(12,"bold") ,
+                font.y = c(14, "bold"))
+
+#arrive-time strata
+fit_strata1 <- survfit(Surv(lag) ~ early_arrive, data = arr.not.data[arr.not.data$lag<400,], conf.type="log-log")
+p2<-ggsurvplot( fit_strata1,conf.int=TRUE,size=0.5,main = "Figure 2B Fatal Accident Survival Time Stratified by Arrival Time",palette = c("lightgrey","black"),font.x = c(14, "bold"),font.tickslab =c(12,"bold") ,
+                font.y = c(14, "bold"),font.legend =c(15),
+                lengend.title="",legend.labs=c("Arrival larger than 15 mins","Arrival less than 15 mins"))
+
+#notification-time strata
+fit_strata2 <- survfit(Surv(lag) ~ early_not, data = arr.not.data[arr.not.data$lag<400,], conf.type="log-log")
+p3<-ggsurvplot( fit_strata2,conf.int=TRUE,size=0.5)
+p1
+p2
+```
+
+Lag time is the period between the time of the crash and this person’s time of death. Figure 2A shows the fatalities over time. This fatality curve, or survival probability curve over time, S(t), indicates that approximately `r round(sum(death_lag[1:2])/sum(death_lag),3)` of fatalities occurring within 6 hours occurred within 100 minutes of the crash (including `r round(death_lag[1]/sum(death_lag),3)` instant deaths before time = 10). Then, we plot fatality curve for stratified dataset based on notification time and arrival time. Figure 2B indicates that early arrival time (arrival time $<$ 10) could help with decrease the proportion of instant death.
+
+Based on this, we construct a Cox Proportional Hazard Model (Cox-PHM). Actually, emergency medical service often based on the location of the crash scene. Thus, we include rural indicator in our model:
+\begin{align*}
+\text h(t) &= h_0 \exp( \beta_1 Arrival + \beta_2 Location )
+\end{align*}
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+fit1 = coxph(Surv(lag)~ early_arrive+factor(RUR_URB), data = arr.not.data[arr.not.data$lag<=400,],
+             ties = "breslow")
+summary(fit1)
+plot(survfit(fit1), xlab = "Time (mins)", ylab = "Survival Probabilities")
+
+```
+
+The model included two factors treated as binary variables: arrival time (later than 10 minutes versus earlier arrival) and crash location (rural versus urban). From the results, we conclude that later arrival time could carry a 2.14% (0.38%,3.92%) relatively higher fatality hazard than earlier group. 
+
+Now we could say that earlier arrival of emergency service helped with increase of survival probability since most of the fatal case happens very quickly. However, this simple survival analysis could not include all of the imformation to estimate survival rate. And unfortunately, the time of death after injury and emergency service arrival may be inconsistently recorded. A thorough analysis of the data would required if we want a more precise result.
+
+## Conclution
+As for fatal traffic cases, many factors would influence the death of a person involved. Generally speaking, drivers in the accident are the most vulnerable people and the situation could be even worse if they don't wear a seat belt. The fatality rate would increase when roads get crowded, such as rush hour, week day, and relatively warm seasons. And also, in-time emergency medical service could help to decrease the probability of early mortality and accordingly, create chances to save lives.
+
+## Reference
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(RefManageR)
+c(BibEntry(bibtype="online", author="Mark Rosekind and DJ Patil",
+title = "2015 Traffic Fatalities Data Has Just Been Released: A Call to Action to Download and Analyze",year="2016",url ="https://www.transportation.gov/fastlane/2015-traffic-fatalities-data-has-just-been-released-call-action-download-and-analyze"),
+BibEntry(bibtype="Article", key = "Wu2015", date = "2015",
+title = "Updated Estimates of Potential Traffic Fatality Reductions With Automatic Collision Notification",
+author = "Wu, Jingshu, Matthew Craig, and Anders Longthorne", journaltitle = "24th International Technical Conference on the Enhanced Safety of Vehicles (ESV). No. 15-0269."))
+```
